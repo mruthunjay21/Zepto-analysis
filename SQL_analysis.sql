@@ -1,3 +1,6 @@
+
+-- Schema Definition
+
 DROP TABLE IF EXISTS zepto;
 
 CREATE TABLE zepto (
@@ -22,7 +25,7 @@ SELECT COUNT(*) FROM zepto;
 SELECT * FROM zepto
 LIMIT 10;
 
--- Null values
+-- Null values check
 SELECT * FROM zepto
 WHERE name IS NULL
 OR
@@ -68,14 +71,17 @@ WHERE mrp = 0 OR discountedSellingPrice = 0;
 DELETE FROM zepto
 WHERE mrp = 0;
 
--- Convert paise to rupees
+-- Convert paise to rupees (Assuming data was in paise)
 UPDATE zepto
 SET mrp = mrp / 100.0,
 discountedSellingPrice = discountedSellingPrice / 100.0;
 
-SELECT mrp, discountedSellingPrice FROM zepto;
+SELECT mrp, discountedSellingPrice FROM zepto
+LIMIT 5;
 
--- Data Analysis
+-- ====================================================================
+-- Basic Data Analysis
+-- ====================================================================
 
 -- Q1. Find the top 10 best-value products based on the discount percentage.
 SELECT DISTINCT name, mrp, discountPercent
@@ -117,7 +123,7 @@ FROM zepto
 WHERE weightInGms >= 100
 ORDER BY price_per_gram;
 
--- Q7. Group the products into categories like Low, Medium, Bulk.
+-- Q7. Group the products into weight categories like Low, Medium, Bulk.
 SELECT DISTINCT name, weightInGms,
 CASE
     WHEN weightInGms < 1000 THEN 'Low'
@@ -132,3 +138,34 @@ SUM(weightInGms * availableQuantity) AS total_weight
 FROM zepto
 GROUP BY category
 ORDER BY total_weight;
+
+-- Advanced Data Analysis 
+
+-- Q9. Find the top 3 most expensive products (by MRP) within each product category.
+
+WITH RankedProducts AS (
+    SELECT
+        name,
+        category,
+        mrp,
+        RANK() OVER(PARTITION BY category ORDER BY mrp DESC) as price_rank
+    FROM zepto
+)
+SELECT
+    name,
+    category,
+    mrp
+FROM RankedProducts
+WHERE price_rank <= 3;
+
+
+-- Q10. Compare each product's price to the average price of its category.
+
+SELECT
+    name,
+    category,
+    discountedSellingPrice,
+    ROUND(AVG(discountedSellingPrice) OVER(PARTITION BY category), 2) as avg_category_price,
+    ROUND(discountedSellingPrice - AVG(discountedSellingPrice) OVER(PARTITION BY category), 2) AS price_difference_from_avg
+FROM zepto
+ORDER BY category, discountedSellingPrice DESC;
